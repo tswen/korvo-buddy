@@ -10,9 +10,9 @@
 |---|---|
 | 主板 | [ESP32-S31-Korvo-1 V1.1](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32s31/esp32-s31-korvo-1/user_guide.html)（ESP32-S31-WROOM-3，16MB Flash + 16MB PSRAM） |
 | LCD | ESP32-S3-LCD-EV-Board-SUB3，4.3" 800×480 RGB565，触摸 GT1151 |
-| 按键 | ADC：PLAY=批准，SET=拒绝，VOL±=亮度/音量 |
-| LED | 可寻址 RGB。公开 BSP `BSP_LED_RGB_IO` = GPIO37 |
-| 音频 | ES8389 扬声器（等待提示音，MVP 桩） |
+| 按键 | 丝印 PLAY = BSP `BSP_BUTTON_MODE` 批准；SET 拒绝；VOL± 改界面亮度。BSP 的背光 API 在这块板上返回不支持 |
+| LED | WS2812，`BSP_LED_RGB_IO` = GPIO37 |
+| 音频 | ES8389 等待音未接，只记进入 WAITING 的边沿 |
 
 BSP（实机编译）：[`espressif/esp32_s31_korvo_1`](https://components.espressif.com/components/espressif/esp32_s31_korvo_1)（ESP-IDF ≥ 5.4）。
 
@@ -31,7 +31,7 @@ host/cursor-bridge/   # Python 主机桥（bleak + 串口回退）
 
 1. **主机**：在 PC 上运行 `host/cursor-bridge`，把 Cursor 会话映射为 `heartbeat`（见 `REFERENCE.md`）。
 2. **链路**：默认 BLE 名 `Cursor-S31-xxxx`；无蓝牙时用 USB 串口同一 JSON 格式。
-3. **设备**：刷入 `firmware/`，解析心跳、渲染 LVGL（待接 BSP）、`WAITING` 时 PLAY/SET 发 `permission`。
+3. **设备**：刷入 `firmware/`。LVGL 显示状态、日志和今日 token（估算时带「约」）。WAITING 时 PLAY 批准、SET 拒绝。BLE 仍是桩，心跳可从串口/测试注入。
 
 ```mermaid
 flowchart LR
@@ -40,26 +40,26 @@ flowchart LR
   FW -->|permission| Bridge
 ```
 
-## 固件编译（实板）
+## 固件编译（ESP-IDF 6.1，本机已用官方 display 例程点亮 SUB3）
 
-需安装 [ESP-IDF 5.4+](https://docs.espressif.com/projects/esp-idf/) 并支持 `esp32s31` 目标。
+串口：CP2102N，`/dev/ttyUSB0`。`esp32s31` 在 IDF 6.1 里要 `--preview`。
 
 ```bash
+. ~/idf/esp-idf6.1/export.sh
 cd firmware
-# 编辑 main/idf_component.yml，启用 esp32_s31_korvo_1
-idf.py set-target esp32s31
+idf.py --preview set-target esp32s31
 idf.py build
-idf.py -p PORT flash monitor
+idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-没有 IDF 时可以先跑主机测试：协议解析、状态机、ADC 窗口、BLE 行拆包。
+`build` 或 `flash` 若仍提示目标处于预览，给那两条也加上 `--preview`。BSP 依赖已写在 `firmware/main/idf_component.yml`。细节和丝印对照见 [firmware/README.md](firmware/README.md)。
+
+没有板子、也没有 IDF 时：
 
 ```bash
 make -C firmware/host_test test
 cd host/cursor-bridge && PYTHONPATH=. python3 -m unittest tests.test_bridge
 ```
-
-显示、NimBLE、ES8389 仍要在实机链接 `espressif/esp32_s31_korvo_1`。灯脚以 BSP 的 `BSP_LED_RGB_IO`（GPIO37）为准。细节见 [firmware/README.md](firmware/README.md)。
 
 ## 主机桥接
 
@@ -76,8 +76,8 @@ cursor-bridge --demo
 
 | 阶段 | 内容 |
 |---|---|
-| M0（本仓库） | 协议文档、状态机、NDJSON 解析桩、Python 桥骨架 |
-| M1 | 启用 Korvo BSP：LCD + LVGL 布局 + WS2812 |
+| M0 | 协议、状态机、NDJSON、Python 桥 |
+| M1（本仓库） | BSP 屏 + LVGL 宠物界面 + ADC 按键 + WS2812。BLE 仍是桩，提示音未接喇叭 |
 | M2 | NimBLE NUS 与 `cursor-bridge` 联调 |
 | M3 | Cursor Hooks → 真实 `permission` 转发 |
 | 可选 | `Claude-` 广播名、ES8389 等待音 |

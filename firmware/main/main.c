@@ -1,11 +1,12 @@
 /*
  * Korvo 爪爪 — firmware entry.
- * State machine, NDJSON, text UI frame, ADC key map, NUS line buffer.
- * Display, NimBLE, and the codec stay behind the public BSP (not linked here).
+ * State machine, NDJSON, LVGL pet UI, ADC keys, WS2812.
+ * BLE NUS and the ES8389 chime stay stubs.
  */
 
 #include "audio_chime.h"
 #include "ble_transport_stub.h"
+#include "board_hooks.h"
 #include "buddy_proto.h"
 #include "buddy_state.h"
 #include "input_handler.h"
@@ -94,6 +95,7 @@ static void on_input(buddy_input_action_t action, void *user)
 void app_main(void)
 {
     ESP_LOGI(TAG, "Korvo 爪爪 starting");
+    korvo_board_bind();
 
     buddy_state_init();
     audio_chime_reset();

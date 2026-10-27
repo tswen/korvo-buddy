@@ -1,53 +1,61 @@
 # firmware — Korvo 爪爪
 
-ESP-IDF 应用骨架，目标 **esp32s31**。显示、按键、WS2812、喇叭走公开 BSP [`espressif/esp32_s31_korvo_1`](https://components.espressif.com/components/espressif/esp32_s31_korvo_1)（ESP-IDF ≥ 5.4）。本目录在没有 IDF 时仍可用主机 gcc 测协议和状态机。
+ESP-IDF 应用，目标 **esp32s31**。屏、ADC 按键、WS2812 走公开 BSP [`espressif/esp32_s31_korvo_1`](https://components.espressif.com/components/espressif/esp32_s31_korvo_1) `^1.0.1`。BLE 仍是 NUS 行缓冲桩。ES8389 等待音只记边沿，不打开 codec。
+
+没有开发板时，主机 gcc 测协议和状态机（不编译 `board_bsp.c`）。
+
+## 丝印和 BSP 枚举
+
+| 丝印 | BSP 枚举 | 动作 |
+|---|---|---|
+| PLAY | `BSP_BUTTON_MODE` | 批准 |
+| SET | `BSP_BUTTON_SET` | 拒绝 |
+| VOL+ | `BSP_BUTTON_VOLP` | 亮度 +5（界面上的百分比） |
+| VOL- | `BSP_BUTTON_VOLM` | 亮度 −5 |
+
+公开头文件没有 PLAY 这个名字。`bsp_button.c` 的四个 ADC 窗口（ADC1 CH0）和丝印一一对应，MODE 就是 PLAY。`board_bsp.c` 按这个接。
+
+灯是 `BSP_LED_RGB_IO`（GPIO37）上的 WS2812，经 `bsp_led_indicator_create()`。颜色：休眠暗蓝呼吸、待命青、执行绿、等待琥珀快闪、错误红。
+
+## 亮度
+
+`bsp_display_brightness_set()` 在这份 BSP 里会打日志并返回 `ESP_ERR_NOT_SUPPORTED`（`BSP_LCD_BACKLIGHT` 是 `GPIO_NUM_NC`）。VOL 仍会改屏幕上的百分比。背光硬件没接到这个 API。
+
+## 提示音
+
+进入 WAITING 时 `audio_chime_on_state()` 返回 true，主循环打一条 log。没有调用 `bsp_audio_codec_speaker_init()`。ESP32-S31 的 MCLK 未接，BSP 建议 16 kHz。
+
+## 实板编译（已在本机用官方 display 例程验证的工具链）
+
+串口是 CP2102N，设备节点 `/dev/ttyUSB0`。IDF 6.1 里 `esp32s31` 还要带 `--preview`。
+
+```bash
+. ~/idf/esp-idf6.1/export.sh
+cd firmware
+idf.py --preview set-target esp32s31
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+若 `build` / `flash` 仍提示目标处于预览，给那两条也加上 `--preview`。
+
+`sdkconfig.defaults` 对齐官方 `examples/display/sdkconfig.bsp.esp32_s31_korvo_1`（PSRAM、RGB bounce buffer、LVGL 9），并打开 `CONFIG_LV_FONT_SIMSUN_16_CJK`，用来画「约」和中文状态。某条 CONFIG 若报未知，删掉那一行；SPIRAM 和 `CONFIG_BSP_LCD_*` 是点亮 SUB3 用的，留着。
+
+依赖在 `main/idf_component.yml`，第一次构建会从组件注册表拉 BSP。
+
+## 主机侧自测（无需 IDF、无需板子）
+
+```bash
+make -C firmware/host_test test
+cd host/cursor-bridge && PYTHONPATH=. python3 -m unittest tests.test_bridge
+```
 
 ## 模块
 
 | 文件 | 作用 |
 |---|---|
-| `main.c` | 主循环：收行、状态机、UI 帧、灯色 |
-| `buddy_state.c` | SLEEP / IDLE / RUNNING / WAITING / ERROR |
-| `buddy_proto.c` | NDJSON：`heartbeat`（含 `entries[]`）、`status`、`permission` |
-| `pet_ui.c` | 800×480 五区布局 + 文本帧（LVGL 调用写在 `pet_ui_init` 注释里） |
-| `input_handler.c` | ADC 窗口 → PLAY 批准 / SET 拒绝 / VOL± 亮度 |
-| `ble_transport_stub.c` | NUS 行缓冲；`ble_transport_feed` / `send_line` |
-| `status_led.c` | 状态 → RGB + 效果名（GPIO37 = `BSP_LED_RGB_IO`） |
-| `audio_chime.c` | 进入 WAITING 的边沿；ES8389 播放留给 BSP |
-| `board_map.h` | 从公开 `esp-bsp` 抄来的灯脚和 ADC 窗口 |
-
-协议见 [REFERENCE.md](../REFERENCE.md)。
-
-## 按键
-
-公开 `bsp_button.c` 四个 ADC 键（ADC1 CH0）：`BSP_BUTTON_SET`、`BSP_BUTTON_MODE`、`BSP_BUTTON_VOLP`、`BSP_BUTTON_VOLM`。用户指南丝印是 PLAY、SET、VOL+、VOL-。本仓库把 **MODE 当作 PLAY（批准）**。BSP 头文件没有写 PLAY 这个名字，上板后核对丝印再改 `input_handler.c`。
-
-## 灯
-
-`BSP_LED_RGB_IO` 是 **GPIO37**。有一页用户指南写 RGB 由 GPIO8 驱动。以 BSP 头文件为准，骨架不直接操作 GPIO。
-
-## 不在本骨架里链接的 BSP 调用
-
-实机取消 `main/idf_component.yml` 里的注释后使用：
-
-- `bsp_display_start()`、`bsp_display_lock()` / `unlock()`、`bsp_display_brightness_set()`
-- `bsp_iot_button_create()`
-- `bsp_led_indicator_create()`、`bsp_led_set()`
-- `bsp_audio_codec_speaker_init()`（MCLK 未接，BSP 建议 16 kHz）
-
-## 主机侧自测（无需 IDF）
-
-```bash
-make -C firmware/host_test test
-```
-
-## 实板编译
-
-```bash
-cd firmware
-# 编辑 main/idf_component.yml，启用 esp32_s31_korvo_1
-# main/CMakeLists.txt 的 REQUIRES 加上 esp32_s31_korvo_1
-idf.py set-target esp32s31
-idf.py build
-idf.py -p PORT flash monitor
-```
+| `board_bsp.c` | `bsp_display_start`、LVGL 800×480、按键、WS2812 |
+| `pet_ui.c` | 文本帧（主机测试）+ 调用板上 UI |
+| `buddy_state.c` / `buddy_proto.c` | 状态机和 NDJSON |
+| `ble_transport_stub.c` | NUS 行缓冲，尚未 NimBLE |
+| `audio_chime.c` | WAITING 边沿，无音频输出 |

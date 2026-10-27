@@ -1,9 +1,21 @@
 #include "pet_ui.h"
 
+#include "board_hooks.h"
 #include "board_map.h"
 
 #include <stdio.h>
 #include <string.h>
+
+__attribute__((weak)) void pet_ui_board_init(void) {}
+__attribute__((weak)) void pet_ui_board_render(buddy_state_t state, const buddy_snapshot_t *snap)
+{
+    (void)state;
+    (void)snap;
+}
+__attribute__((weak)) void pet_ui_board_set_brightness(int percent)
+{
+    (void)percent;
+}
 
 static const pet_zone_t s_zones[] = {
     {0, 0, KORVO_LCD_WIDTH, 40, "header"},
@@ -45,13 +57,8 @@ void pet_ui_init(void)
 {
     s_brightness = 80;
     s_frame[0] = '\0';
-    /*
-     * Device path (espressif/esp32_s31_korvo_1, ESP-IDF >= 5.4):
-     *   lv_display_t *disp = bsp_display_start();
-     *   bsp_display_brightness_set(s_brightness);
-     *   bsp_display_lock / lv_obj zones / bsp_display_unlock
-     * Touch controller on the SUB3 board is GT1151 (BSP capability TOUCH).
-     */
+    pet_ui_board_init();
+    pet_ui_board_set_brightness(s_brightness);
 }
 
 void pet_ui_deinit(void)
@@ -68,6 +75,7 @@ void pet_ui_set_brightness(int percent)
         percent = 100;
     }
     s_brightness = percent;
+    pet_ui_board_set_brightness(s_brightness);
 }
 
 void pet_ui_adjust_brightness(int delta)
@@ -153,4 +161,5 @@ void pet_ui_render(buddy_state_t state, const buddy_snapshot_t *snap)
     if (pet_ui_format(s_frame, sizeof(s_frame), state, snap) < 0) {
         s_frame[0] = '\0';
     }
+    pet_ui_board_render(state, snap);
 }

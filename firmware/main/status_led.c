@@ -1,6 +1,14 @@
 #include "status_led.h"
 
+#include "board_hooks.h"
 #include "board_map.h"
+
+#include <string.h>
+
+__attribute__((weak)) void status_led_board_apply(status_led_color_t color)
+{
+    (void)color;
+}
 
 static status_led_color_t s_current;
 
@@ -23,15 +31,12 @@ status_led_color_t status_led_for_state(buddy_state_t state)
 
 void status_led_apply(status_led_color_t color)
 {
+    bool same = s_current.effect != NULL && color.effect != NULL && s_current.r == color.r &&
+                s_current.g == color.g && s_current.b == color.b && strcmp(s_current.effect, color.effect) == 0;
     s_current = color;
-    /*
-     * On device, after espressif/esp32_s31_korvo_1 is linked:
-     *   led_indicator_handle_t leds[BSP_LED_NUM];
-     *   bsp_led_indicator_create(leds, NULL, BSP_LED_NUM);
-     *   drive BSP_LED_RGB_IO (GPIO KORVO_LED_RGB_GPIO) with color.effect
-     * Do not bit-bang GPIO8: a user-guide sentence names that pin, the BSP
-     * header names GPIO37.
-     */
+    if (!same) {
+        status_led_board_apply(color);
+    }
     (void)KORVO_LED_RGB_GPIO;
 }
 

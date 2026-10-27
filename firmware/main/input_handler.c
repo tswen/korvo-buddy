@@ -1,6 +1,9 @@
 #include "input_handler.h"
 
+#include "board_hooks.h"
 #include "board_map.h"
+
+__attribute__((weak)) void input_board_init(void) {}
 
 typedef struct {
     const char *bsp_name;
@@ -27,13 +30,7 @@ void input_handler_init(buddy_input_cb_t cb, void *user)
     s_cb = cb;
     s_user = user;
     s_pending = 0;
-    /*
-     * Device path:
-     *   button_handle_t btns[BSP_BUTTON_NUM];
-     *   bsp_iot_button_create(btns, NULL, BSP_BUTTON_NUM);
-     *   iot_button_register_cb(btns[i], BUTTON_PRESS_DOWN, ..., on_press, (void *)(intptr_t)i);
-     * ADC windows live in s_keys, copied from public bsp_button.c.
-     */
+    input_board_init();
 }
 
 int input_classify_adc(int raw, buddy_input_action_t *out)
