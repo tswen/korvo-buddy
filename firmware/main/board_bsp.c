@@ -5,6 +5,7 @@
 
 #include "board_hooks.h"
 #include "input_handler.h"
+#include "pet_ui.h"
 
 #include "bsp/esp32_s31_korvo_1.h"
 #include "esp_log.h"
@@ -231,7 +232,7 @@ void pet_ui_board_render(buddy_state_t state, const buddy_snapshot_t *snap)
     }
 
     char line[192];
-    snprintf(line, sizeof(line), "Korvo 爪爪    %s", state_cn(state));
+    snprintf(line, sizeof(line), "Korvo 爪爪    %s    亮度 %d%%", state_cn(state), pet_ui_get_brightness());
     lv_label_set_text(s_ui.header, line);
 
     lv_obj_set_style_bg_color(s_ui.pet, lv_color_hex(face_bg(state)), 0);
