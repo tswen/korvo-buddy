@@ -1,0 +1,21 @@
+[project]
+name = "cursor-bridge"
+version = "0.1.0"
+description = "PC bridge: Cursor Agent events → Korvo 爪爪 NDJSON over BLE/serial"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "bleak>=0.22.0",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+cursor-bridge = "cursor_bridge.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cursor_bridge*"]

@@ -1,0 +1,8 @@
+## Korvo 爪爪组件依赖
+## 在具备网络与 ESP-IDF 环境的机器上取消注释并 idf.py reconfigure
+dependencies:
+  idf:
+    version: ">=5.4"
+  # espressif/esp32_s31_korvo_1: "^1.0.1"
+  # 说明: BSP 提供 LCD(LVGL)、GT1151 触摸、ADC 按键、WS2812、ES8389 等封装
+  # 文档: https://components.espressif.com/components/espressif/esp32_s31_korvo_1

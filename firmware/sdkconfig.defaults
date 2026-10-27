@@ -1,0 +1,4 @@
+# Korvo 爪爪 — 板级默认值（实机编译时与 esp32_s31_korvo_1 BSP 一并调优）
+CONFIG_IDF_TARGET="esp32s31"
+# CONFIG_BT_ENABLED=y
+# CONFIG_BT_NIMBLE_ENABLED=y
