@@ -42,44 +42,53 @@ class StdoutTransport(Transport):
 
 
 class BleakTransport(Transport):
-    """BLE NUS 写入桩：连接后向 RX 特征写 NDJSON。"""
+    """BLE NUS. RX is written by the PC; TX notifications are split on newlines."""
 
     def __init__(self, name_prefix: str = "Cursor-S31") -> None:
         self.name_prefix = name_prefix
         self._client = None
-        self._rx = None
         self._buffer = ""
+        self._lines: asyncio.Queue[str] = asyncio.Queue()
+
+    def _on_notify(self, _sender: object, data: bytearray) -> None:
+        self._buffer += bytes(data).decode("utf-8", errors="replace")
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            line = line.strip("\r")
+            if line:
+                self._lines.put_nowait(line)
 
     async def connect(self) -> None:
         from bleak import BleakClient, BleakScanner
 
-        device = None
-        async with BleakScanner() as scanner:
-            for d in scanner.discovered_devices:
-                if d.name and d.name.startswith(self.name_prefix):
-                    device = d
-                    break
+        devices = await BleakScanner.discover(timeout=8.0)
+        device = next((d for d in devices if d.name and d.name.startswith(self.name_prefix)), None)
         if not device:
             raise RuntimeError(f"未找到 BLE 设备名前缀: {self.name_prefix}")
 
         self._client = BleakClient(device)
         await self._client.connect()
-        await self._client.get_services()
-        self._rx = NUS_RX_CHAR
+        await self._client.start_notify(NUS_TX_CHAR, self._on_notify)
 
     async def disconnect(self) -> None:
         if self._client and self._client.is_connected:
+            try:
+                await self._client.stop_notify(NUS_TX_CHAR)
+            except Exception:
+                pass
             await self._client.disconnect()
 
     async def write_line(self, obj: dict) -> None:
         if not self._client or not self._client.is_connected:
             raise RuntimeError("BLE 未连接")
         payload = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
-        await self._client.write_gatt_char(self._rx, payload, response=False)
+        await self._client.write_gatt_char(NUS_RX_CHAR, payload, response=False)
 
     async def read_line(self) -> str | None:
-        # TODO: 订阅 NUS_TX notify，按行分包
-        return None
+        try:
+            return self._lines.get_nowait()
+        except asyncio.QueueEmpty:
+            return None
 
 
 class SerialTransport(Transport):

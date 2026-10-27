@@ -52,6 +52,8 @@ WAITING 时全屏 overlay（半透明底）:
 | IDLE | 眨眼 idle | 待命 | 青色常亮 |
 | RUNNING | 跑步/忙碌 | 执行中 | 绿色脉冲 |
 | WAITING | 举手 + overlay | 等待批准 | 琥珀快闪 |
+
+PLAY / SET 对应丝印。公开 BSP 枚举把 PLAY 写成 `BSP_BUTTON_MODE`，固件按该枚举做批准，上板再核对。灯色对应 `BSP_LED_RGB_IO`（GPIO37）。
 | ERROR | 困惑 | 链路错误 | 红色 |
 
 ```mermaid

@@ -6,6 +6,8 @@ idf_component_register(
         "pet_ui.c"
         "input_handler.c"
         "ble_transport_stub.c"
+        "status_led.c"
+        "audio_chime.c"
     INCLUDE_DIRS "."
     REQUIRES
         # 实机启用 BSP 时在 idf_component.yml 添加 esp32_s31_korvo_1 后取消注释:

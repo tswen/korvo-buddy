@@ -11,7 +11,7 @@
 | 主板 | [ESP32-S31-Korvo-1 V1.1](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32s31/esp32-s31-korvo-1/user_guide.html)（ESP32-S31-WROOM-3，16MB Flash + 16MB PSRAM） |
 | LCD | ESP32-S3-LCD-EV-Board-SUB3，4.3" 800×480 RGB565，触摸 GT1151 |
 | 按键 | ADC：PLAY=批准，SET=拒绝，VOL±=亮度/音量 |
-| LED | WS2812 @ GPIO37 |
+| LED | 可寻址 RGB。公开 BSP `BSP_LED_RGB_IO` = GPIO37 |
 | 音频 | ES8389 扬声器（等待提示音，MVP 桩） |
 
 BSP（实机编译）：[`espressif/esp32_s31_korvo_1`](https://components.espressif.com/components/espressif/esp32_s31_korvo_1)（ESP-IDF ≥ 5.4）。
@@ -52,7 +52,14 @@ idf.py build
 idf.py -p PORT flash monitor
 ```
 
-当前仓库为 **MVP 桩**：`ble_transport_stub`、`pet_ui`、`input_handler` 含 TODO，在无 BSP 的环境可能仅作结构参考；接好 BSP 后实现 NimBLE NUS、LVGL 与按键。
+没有 IDF 时可以先跑主机测试：协议解析、状态机、ADC 窗口、BLE 行拆包。
+
+```bash
+make -C firmware/host_test test
+cd host/cursor-bridge && PYTHONPATH=. python3 -m unittest tests.test_bridge
+```
+
+显示、NimBLE、ES8389 仍要在实机链接 `espressif/esp32_s31_korvo_1`。灯脚以 BSP 的 `BSP_LED_RGB_IO`（GPIO37）为准。细节见 [firmware/README.md](firmware/README.md)。
 
 ## 主机桥接
 

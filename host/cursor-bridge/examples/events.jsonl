@@ -1,0 +1,3 @@
+{"kind":"idle","msg":"待命","line":"bridge online"}
+{"kind":"running","msg":"正在执行 grep","line":"Running grep in firmware/"}
+{"kind":"tool_waiting","id":"prm_demo_001","tool":"run_terminal_cmd","hint":"npm test -- --run","line":"Tool approval required"}

@@ -18,22 +18,29 @@ def parse_permission_line(line: str) -> dict[str, Any] | None:
     return obj
 
 
-def handle_permission(
-    perm: dict[str, Any],
-    *,
-    forward_to_cursor: bool = False,
-) -> dict[str, Any]:
-    """
-    MVP：记录并返回 status ACK。
-    forward_to_cursor=True 时由后续 Hooks/自动化实现真实批准。
-    """
-    pid = perm["id"]
+def handle_permission(perm: dict[str, Any]) -> dict[str, Any]:
+    """ACK a permission. Cursor itself is not called; the host log is the MVP sink."""
     decision = perm["decision"]
-    ok = True
     detail = "approved" if decision == "approve" else "denied"
+    return {"type": "status", "id": perm["id"], "ok": True, "detail": detail}
 
-    if not forward_to_cursor:
-        # 桩：仅 ACK，便于固件联调
-        pass
 
-    return {"type": "status", "id": pid, "ok": ok, "detail": detail}
+class PermissionGate:
+    """Only the prompt id from the latest waiting heartbeat is actionable."""
+
+    def __init__(self) -> None:
+        self.pending_id: str | None = None
+
+    def note_heartbeat(self, heartbeat: dict[str, Any]) -> None:
+        prompt = heartbeat.get("prompt")
+        if heartbeat.get("waiting", 0) and isinstance(prompt, dict) and prompt.get("id"):
+            self.pending_id = str(prompt["id"])
+        else:
+            self.pending_id = None
+
+    def handle(self, perm: dict[str, Any]) -> dict[str, Any]:
+        if self.pending_id is None or perm["id"] != self.pending_id:
+            return {"type": "status", "id": perm["id"], "ok": False, "detail": "stale"}
+        ack = handle_permission(perm)
+        self.pending_id = None
+        return ack

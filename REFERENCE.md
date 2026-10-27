@@ -110,12 +110,14 @@
 | `id` | 必须匹配最近 `heartbeat.prompt.id` |
 | `decision` | `approve` \| `deny` |
 
-映射（ESP32-S31-Korvo-1 V1.1 ADC 按键）：
+映射（ESP32-S31-Korvo-1 V1.1）：
 
 - **PLAY** → `approve`
 - **SET** → `deny`
 
-触摸 UI 可后续发送相同 JSON。
+公开 BSP 枚举是 `BSP_BUTTON_SET`、`BSP_BUTTON_MODE`、`BSP_BUTTON_VOLP`、`BSP_BUTTON_VOLM`（ADC1 CH0，窗口见 `firmware/main/board_map.h`）。丝印为 PLAY / SET / VOL+ / VOL-。固件暂把 `BSP_BUTTON_MODE` 当作 PLAY。头文件没有 PLAY 这个标识，上板后核对。
+
+触摸 UI 可发送同一条 JSON。
 
 ---
 
